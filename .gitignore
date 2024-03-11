@@ -2,3 +2,4 @@
 *.vrm
 config.json
 venv
+__pycache__

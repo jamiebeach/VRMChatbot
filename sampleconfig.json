@@ -1,0 +1,4 @@
+{
+    "SOLAR_KEY": "your_secret_key",
+    "SOLAR_BASEURL": "https://api.upstage.ai/v1/solar",
+}

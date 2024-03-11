@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>VRM Chatbot</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<div id="scene-container"></div>
+<div id="chat-container">
+  <div id="input-container">
+    <input type="text" id="chat-input" autocomplete="off" autofocus placeholder="Type your message...">
+  </div>
+  <div id="chat-log"></div>
+
+</div>
+
+
+<script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "@pixiv/three-vrm": "./three-vrm.module.min.js"
+    }
+  }
+</script>
+
+<script type="module">
+  import * as THREE from 'three';
+  import ChatbotScene from './Chatbot/chatbotScene.js';
+  import ChatbotModel from './Chatbot/chatbotModel.js';
+  import { STATES } from './Chatbot/chatbotModel.js';
+  
+  const cbScene = new ChatbotScene(document.getElementById('scene-container'));
+  const scene = cbScene.getScene();
+  const renderer = cbScene.getRenderer();
+  let timet = 0;
+  let currentAnimationIndex=0;
+
+  let cbModel = new ChatbotModel('VRM/aria.vrm', cbScene.getScene(), () => {
+    animate(cbModel);
+  });
+
+
+    // Chat input event listener
+  const chatInput = document.getElementById('chat-input');
+  chatInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      const message = chatInput.value.trim();
+      if (message) {
+        handleChatMessage(message);
+        chatInput.value = '';
+      }
+    }
+  });
+
+  function handleChatMessage(message) {
+    console.log('Chat message:', message);
+    if (message.startsWith('/')) {
+      // Process commands
+      const [command, ...params] = message.slice(1).trim().split(' ');
+      processCommand(command.toLowerCase(), params);
+    } else {
+      // Handle regular chat message
+      const chatLog = document.getElementById('chat-log');
+      const userMessage = document.createElement('p');
+      userMessage.textContent = `User: ${message}`;
+      //chatLog.appendChild(userMessage);
+      chatLog.innerHTML = userMessage.outerHTML + chatLog.innerHTML;
+
+      console.log('Chat message:', message);
+      cbModel.say(message, (resp)=>{
+        // Append the AI's response to the chat log
+        const aiResponse = document.createElement('p');
+        aiResponse.textContent = `AI: ${resp}`;
+        chatLog.innerHTML = aiResponse.outerHTML + chatLog.innerHTML;
+        console.log('resp = ' + resp);
+      });
+
+      // Add your logic to process the regular chat message and interact with the 3D avatar
+    }
+  }
+
+  function processCommand(command, parms){
+    switch(command){
+      case 'mood':
+        if(parms[0] == 'happy'){
+          cbModel.changeState(STATES.happy);
+        }
+      case 'say':
+        var sentence = parms.join(' ');
+        cbModel.say(sentence);
+      case 'showcamera':
+        console.log(cbScene.getCamera());
+    }
+  }
+
+  function animate(model) {
+    requestAnimationFrame(() => animate(model));
+    model.animate();
+    cbScene.getControls().update();
+    renderer.render(scene, cbScene.getCamera());
+  }
+</script>

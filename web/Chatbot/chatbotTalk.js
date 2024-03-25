@@ -10,7 +10,6 @@ export default class ChatbotTalk {
     process(sentence){
         const words = sentence.replace(/[^a-zA-Z ]/g, '').toLowerCase().split(' ');
         const phonemes = words.flatMap(word => doubleMetaphone(word)[0]);
-        console.log(phonemes);
 
         phonemes.forEach(phneme => {
             phneme.split('').forEach(p => {
@@ -39,5 +38,9 @@ export default class ChatbotTalk {
         }else {
             return '';
         }
+    }
+
+    queuelength(){
+        return this.phonemeQueue.length;
     }
 }

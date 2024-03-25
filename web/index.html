@@ -28,6 +28,7 @@
     }
   }
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.3/socket.io.js"></script>
 
 <script type="module">
   import * as THREE from 'three';
@@ -77,6 +78,7 @@
         // Append the AI's response to the chat log
         const aiResponse = document.createElement('p');
         aiResponse.textContent = `AI: ${resp}`;
+
         chatLog.innerHTML = aiResponse.outerHTML + chatLog.innerHTML;
         console.log('resp = ' + resp);
       });
@@ -96,6 +98,10 @@
         cbModel.say(sentence);
       case 'showcamera':
         console.log(cbScene.getCamera());
+      case 'mouth':
+        cbModel.changeMouthTo(parms[0]);
+      case 'mouth2':
+        cbModel.changeMouthPhonemeStrength(parms[0], parms[1]);
     }
   }
 

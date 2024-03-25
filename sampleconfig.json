@@ -1,4 +1,9 @@
 {
-    "SOLAR_KEY": "your_secret_key",
+    "SOLAR_KEY": "<SOLAR_KEY>",
     "SOLAR_BASEURL": "https://api.upstage.ai/v1/solar",
+    "SOLAR_MODEL_NAME": "solar-1-mini-chat",
+    "OPENAIAPI_CHAT_BASEURL":"http://localhost:5001/v1/",
+    "OPENAIAPI_CHAT_KEY":"notneeded",
+    "OPENAI_CHAT_MODEL":"SolarMaid.gguf",
+    "TTS_SERVER_URL":"wss://<tts server domain>/audio_stream"
 }

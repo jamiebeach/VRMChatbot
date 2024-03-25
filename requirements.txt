@@ -2,3 +2,6 @@
  langchain-community
  langchainhub
  langchain-openai
+ flask
+ flask_socketio
+ websocket-client

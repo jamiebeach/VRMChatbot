@@ -24,12 +24,12 @@ export default class ChatbotScene {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
 
-    this.camera.rotation.x=-0.17100671704551984;
+    this.camera.rotation.x=-5.57100671704551984;
     this.camera.rotation.y=-0.34286062223086816;
     this.camera.rotation.z=-0.05799141246354357;
     this.camera.position.x=0.025314432535763928;
-    this.camera.position.y=0.5351060500281132;
-    this.camera.position.z=0.4096304032181622;
+    this.camera.position.y=0.3;
+    this.camera.position.z=0.5;
 
   }
 

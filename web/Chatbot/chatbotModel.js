@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { VRMLoaderPlugin } from '@pixiv/three-vrm';
-import { animationUrls, happyAnimationUrls, idleAnimationsUrls } from './animationData.js';
+import { animationUrls, happyAnimationUrls, idleAnimationsUrls, talkingAnimationUrls } from './animationData.js';
 import { loadMixamoAnimation } from './loadMixamoAnimation.js';
 import ExpressionManager from './expressionManager.js';
 import ChatbotTalk from './chatbotTalk.js';
+import sendText from './../voice.js';
+import VoiceHelper from './../voice.js';
 
 export const STATES={
     'idle':'idle',
@@ -41,8 +43,9 @@ export default class ChatbotModel {
         this.idleTimeout = 0;
 
         this.talk = new ChatbotTalk(this);
-
         this.preloaded = false;
+
+        this.voiceHelper = new VoiceHelper();
 
         const loader = new GLTFLoader();
         // Install GLTFLoader plugin
@@ -62,7 +65,7 @@ export default class ChatbotModel {
         
               // Rotate the VRM scene object by 180 degrees around the Y-axis
               //vrmSceneObject.rotation.y = Math.PI; // Math.PI is 180 degrees in radians
-              vrmSceneObject.position.y = -1
+              vrmSceneObject.position.y = -1.15
               // add the loaded vrm to the scene
               this.currentVrm = vrm;
               scene.add(vrm.scene);
@@ -150,7 +153,10 @@ export default class ChatbotModel {
         }
         
         if(this.expressionManager){
-            this.expressionManager.handleExpressions();
+            this.expressionManager.handleExpressions(()=>{
+                console.log('finished talking.');
+                this.state = STATES.idle;
+            });
         }
 
         //For demo purposes
@@ -219,12 +225,24 @@ export default class ChatbotModel {
         this.state = newState;
         this.stateTimeout = durationS;
 
+        console.log('changeState: ' + newState)
         if(newState == STATES.happy){
             const i = Math.floor((Math.random() * idleAnimationsUrls.length));
             this.currentAnimationUrl = happyAnimationUrls[i];
+        }else if(newState == STATES.talking){
+            const i = Math.floor((Math.random() * talkingAnimationUrls.length));
+            this.currentAnimationUrl = talkingAnimationUrls[i];
         }
         this.stateTimer = 0;
         this.loadFBX(this.currentAnimationUrl);
+    }
+
+    changeMouthTo(viseme){
+        this.expressionManager.changeMouthTo(viseme);
+    }
+
+    changeMouthPhonemeStrength(ph, st){
+        this.expressionManager.changeMouthPhonemeStrength(ph, st);
     }
 
     say(sentence, onResponse){
@@ -237,11 +255,30 @@ export default class ChatbotModel {
         })
         .then(response => response.json())
         .then(data => {
+            console.log('data: ' + data);
             console.log('Response:', data.response);
+            let mood = data.mood;
             // Handle the response data as needed
+            console.log('mood changed to ' + mood);
             if(this.talk){
                 this.talk.process(data.response);
+                if(mood == 'happy'){
+                    this.changeState(STATES.happy);
+                }else if(mood == 'sad' ){
+                    this.changeState(STATES.sad);
+                }else if(mood == 'angry'){
+                    this.changeState(STATES.angry);
+                }else {
+                    this.changeState(STATES.talking);
+                }                
             }
+
+            //Speak the response
+            this.voiceHelper.sendText(data.response, (viseme)=>{
+                console.log(viseme);
+                this.changeMouthTo(viseme);
+            });
+
             if(onResponse)
                 onResponse(data.response);
         })

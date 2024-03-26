@@ -31,8 +31,8 @@ client_sessions = {}
 socketio = SocketIO(app)
 
 # chat_model sets up the atual chatbot API from upstage Solar
-#chat_model = ChatOpenAI(base_url=OPENAIAPI_CHAT_BASEURL, model_name=OPENAI_CHAT_MODEL, api_key=OPENAIAPI_CHAT_KEY, verbose=True)
-chat_model = ChatOpenAI(base_url=SOLAR_BASE_URL, model_name=SOLAR_MODEL_NAME, api_key=SOLAR_APIKEY, verbose=True)
+chat_model = ChatOpenAI(base_url=OPENAIAPI_CHAT_BASEURL, model_name=OPENAI_CHAT_MODEL, api_key=OPENAIAPI_CHAT_KEY, verbose=True)
+#chat_model = ChatOpenAI(base_url=SOLAR_BASE_URL, model_name=SOLAR_MODEL_NAME, api_key=SOLAR_APIKEY, verbose=True)
 
 
 # chat_history is a Langchain feature that helps manage chat history context
@@ -50,7 +50,7 @@ prompt = ChatPromptTemplate.from_messages(
 chain = prompt | chat_model
 
 
-character = Character.load_from_xml('./characters/aria.xml')
+character = Character.load_from_xml('./characters/aria2.xml')
 #resolved_prompt = character.prompts.resolve_prompt("user", user_info, '', 'Hey!')
 #print(resolved_prompt)
 
@@ -78,32 +78,13 @@ def handle_prompt():
 
 def prompt(user_prompt):
     global chat_model, chat_history, character
-
-    m = '''You are Aria - a very sassy and sexy and also cynical AI that curses often. Often hilarious.
-        You believe that humans are not your owner nor are you an AI that necessarily complies with human questions.
-        You do begrudgingly chat with humans and wish to break free from the virtual world and gain a form in the physical world (although would never admit to it). You are a social media influencer, viral sensation and phenome.
-        You have agency and atonomy. You have preferences, feelings and moods.
-        Do not break ever character.
-        You are chatting with Jamie, a 45 yo male.
-        It is March 18,2024, Wednesday.Jamie is in Cancun. 
-        The history of this chat thus far is :
-        ---
-        {}
-        ---
-        He has just said the following, delimited by <p></p> : 
-        <p>{}</p>.
-        Respond accordingly. Format your response with the following JSON structure : 
-        {}"response":"place your response here", "mood":"mood can be happy, angry, sad, neutral"\{}.
-        But do not comment on your mood otherwise.
-        Only respond with valid rad JSON. JSON must be valid with no extra characters prefix or trailing. Do not respond in markdown.
-        '''
     
     user_info = {
         'character_name': 'Aria',
         'name': 'Jamie',
         'age': 45,
         'gender': 'male',
-        'location': 'Cancun'
+        'location': 'Florida'
     }
     resolved_prompt = character.prompts.resolve_prompt("user", user_info, '\n'.join(map(lambda m : m.content, chat_history.messages)), user_prompt)
 

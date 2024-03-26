@@ -6,11 +6,11 @@ export const animationUrls = [
     'arguinig.fbx',
     'arguinig2.fbx',
     'talking1.fbx',
-    /*
     'talking2.fbx',
     'talking3.fbx',
     'talking4.fbx',
     'talking5.fbx',
+    /*
     'dance.fbx',
     'dance2.fbx',
     'dance3.fbx',    

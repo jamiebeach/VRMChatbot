@@ -14,6 +14,7 @@ export const STATES={
     'sad':'sad',
     'angry':'angry',
     'talking':'talking',
+    'pretalking':'pretalking',
     'dancing':'dancing'
 };
 
@@ -213,14 +214,26 @@ export default class ChatbotModel {
 
     handleState(deltaTime){
         this.stateTimer += deltaTime;
-        if(this.stateTimer > this.stateTimeout){
+        if(this.state != STATES.talking && this.stateTimer > this.stateTimeout){
             this.state = STATES.idle;
             this.stateTimer = 0;
             this.stateTimeout = 0;
+        }else if(this.state == STATES.talking){
+            //keep in talking state until talking is done.
+            if(this.stateTimer > this.stateTimeout){
+                this.stateTimer = 0;
+                this.changeState(STATES.talking);
+            }
+            if(this.voiceHelper){
+                var visemes = this.voiceHelper.getVisemes();
+                if(!visemes || visemes.length == 0){
+                    this.state = STATES.idle;
+                }
+            }            
         }
     }
 
-    changeState(newState, durationS=5){
+    changeState(newState, durationS=2){
         let stateAnimation = '';
         this.state = newState;
         this.stateTimeout = durationS;
@@ -230,6 +243,7 @@ export default class ChatbotModel {
             const i = Math.floor((Math.random() * idleAnimationsUrls.length));
             this.currentAnimationUrl = happyAnimationUrls[i];
         }else if(newState == STATES.talking){
+            console.log('CHANGE STATE - TALKING');
             const i = Math.floor((Math.random() * talkingAnimationUrls.length));
             this.currentAnimationUrl = talkingAnimationUrls[i];
         }
@@ -269,13 +283,17 @@ export default class ChatbotModel {
                 }else if(mood == 'angry'){
                     this.changeState(STATES.angry);
                 }else {
-                    this.changeState(STATES.talking);
+                    this.state = STATES.pretalking;
                 }                
             }
 
             //Speak the response
             this.voiceHelper.sendText(data.response, (viseme)=>{
                 console.log(viseme);
+                if(this.state != STATES.talking){
+                    console.log('STARTING to TALK. CHANGING STATE');
+                    this.changeState(STATES.talking);
+                }
                 this.changeMouthTo(viseme);
             });
 

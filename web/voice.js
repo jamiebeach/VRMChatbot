@@ -148,4 +148,8 @@ export default class VoiceHelper {
             });        
         }            
     }
+
+    getVisemes(){
+        return this.visemeData;
+    }
 }

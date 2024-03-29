@@ -9,6 +9,7 @@ def start_proxy(ws_url, sid, socketio):
     Handles the proxying of WebSocket messages between the client and the target server.
     Each client connection will have its own dedicated WebSocket connection to the target.
     """
+    print('creating websocket for ' + ws_url)
     ws = create_connection(ws_url)
 
     def send_to_client():

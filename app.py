@@ -24,6 +24,7 @@ OPENAIAPI_CHAT_KEY = app.config['OPENAIAPI_CHAT_KEY']
 OPENAI_CHAT_MODEL = app.config['OPENAI_CHAT_MODEL']
 SOLAR_MODEL_NAME = app.config['SOLAR_MODEL_NAME']
 TTS_SERVER_URL = app.config['TTS_SERVER_URL']
+THINK_FREQUENCY_SECONDS = app.config['THINK_FREQUENCY_SECONDS']
 
 # Dictionary to store send_to_server functions by client session ID
 client_sessions = {}
@@ -33,6 +34,9 @@ socketio = SocketIO(app)
 # chat_model sets up the atual chatbot API from upstage Solar
 chat_model = ChatOpenAI(base_url=OPENAIAPI_CHAT_BASEURL, model_name=OPENAI_CHAT_MODEL, api_key=OPENAIAPI_CHAT_KEY, verbose=True)
 #chat_model = ChatOpenAI(base_url=SOLAR_BASE_URL, model_name=SOLAR_MODEL_NAME, api_key=SOLAR_APIKEY, verbose=True)
+  
+character = Character.load_from_xml('./characters/aria.xml')
+
 
 
 # chat_history is a Langchain feature that helps manage chat history context
@@ -48,12 +52,6 @@ prompt = ChatPromptTemplate.from_messages(
 
 # This is a big part of langchain, chaining together the prompt and the model (API)
 chain = prompt | chat_model
-
-
-character = Character.load_from_xml('./characters/aria2.xml')
-#resolved_prompt = character.prompts.resolve_prompt("user", user_info, '', 'Hey!')
-#print(resolved_prompt)
-
 
 @app.route('/')
 def serve_index():
@@ -76,44 +74,46 @@ def handle_prompt():
     # Return the response as JSON
     return jsonify({'response': response_content, 'mood': mood})
 
-def prompt(user_prompt):
+def prompt(user_prompt, botstate="response"):
     global chat_model, chat_history, character
     
     user_info = {
-        'character_name': 'Aria',
         'name': 'Jamie',
         'age': 45,
         'gender': 'male',
         'location': 'Florida'
     }
-    resolved_prompt = character.prompts.resolve_prompt("user", user_info, '\n'.join(map(lambda m : m.content, chat_history.messages)), user_prompt)
 
-    #m = m.format('\n'.join(map(lambda m : m.content, chat_history.messages)), user_prompt, '{', '}')
+    resolved_prompt = character.prompts.resolve_prompt("user", user_info, character.getinfo(), '\n'.join(map(lambda m : m.content, chat_history.messages)), user_prompt, "response")
+
     print('user_prompt: ' + resolved_prompt)
 
     chat_history.add_user_message(user_prompt)
 
     response = chain.invoke({"messages": [resolved_prompt]})
-    print(extract_json_from_markdown(response.content))
-    r = extract_json_from_markdown(response.content)
-    print(r)
-    print('returned response:' + r['response'])
-    if(r.get('mood')):
-        print('returned mood:' + r['mood'])
+
+    extractedJSONResponse = extract_json_from_markdown(response.content)
+        
+    print('extracted JSON:' + str(extractedJSONResponse))
+        
+    if(extractedJSONResponse.get('mood')):
+        print('returned mood:' + extractedJSONResponse['mood'])
     else:
         print('no mood found in response. Setting to talking')
-        r['mood'] = 'talking'
+        extractedJSONResponse['mood'] = 'talking'
     
-    chat_history.add_ai_message(user_info.get('character_name','') + ':' +r['response'])
+    chat_history.add_ai_message(user_info.get('character_name','') + ':' +extractedJSONResponse['response'])
 
     print(chat_history.json)
-    return r['response'], r['mood']
+    return extractedJSONResponse['response'], extractedJSONResponse['mood']
 
 
-def extract_json_from_markdown(markdown_str):
+def extract_json_from_markdown(markdown_str, counter = 0):
     # Regular expression to find code blocks that might contain JSON
     code_block_pattern = r"{.*}"
     
+    markdown_str = markdown_str.replace("\n", "")
+
     # Search for JSON within code blocks
     matches = re.findall(code_block_pattern, markdown_str, re.DOTALL)
     
@@ -128,10 +128,18 @@ def extract_json_from_markdown(markdown_str):
             return json_data
         except json.JSONDecodeError as e:
             print(f"Error parsing JSON: {e}")
+
+            if(counter >= 3):
+                print("Tried 3 times and can't fix the JSON")
+            else :
+                # Let's call the chatbot again to fix the JSON
+                print('JSON Was invalid... Asking llm to fix it')
+                response = chain.invoke({"messages": ['Please respond with a valid and fixed version of the following JSON: ' + json_str]})
+                return extract_json_from_markdown(response, counter + 1)
     else:
         print("No JSON found in Markdown.")
     
-    return None
+    return '{"response":"sorry... I errored out.", "mood":"sad"}'
 
 
 @socketio.on('connect')
@@ -156,7 +164,6 @@ def handle_message(message):
         # Retrieve the send_to_server function for this client and use it to forward the message
         send_to_server = client_sessions[sid]
         send_to_server(message)  # Assuming the message is a dictionary with a 'data' key
-
 
 if __name__ == '__main__':
     #app.run(host='0.0.0.0', port=8000, debug=True)

@@ -23,7 +23,8 @@ export default class VoiceHelper {
 
         try{
             //socket = new WebSocket(ws_path);
-            this.socket = io.connect('http://' + window.location.host);
+            console.log('about to connect ws to ' + window.location.protocol + '//' + window.location.host);
+            this.socket = io.connect(window.location.protocol + '//' + window.location.host);
             console.log(this.socket);
         }catch(err){
             console.log('error establishing socket connection: ' + err);

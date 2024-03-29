@@ -42,7 +42,7 @@
   let timet = 0;
   let currentAnimationIndex=0;
 
-  let cbModel = new ChatbotModel('VRM/aria.vrm', cbScene.getScene(), () => {
+  let cbModel = new ChatbotModel('VRM/aria2.vrm', cbScene.getScene(), () => {
     animate(cbModel);
   });
 
@@ -96,12 +96,16 @@
       case 'say':
         var sentence = parms.join(' ');
         cbModel.say(sentence);
+      case 'animation':
+        var animationFile = parms[0];
+        cbModel.loadFBX(animationFile);
       case 'showcamera':
         console.log(cbScene.getCamera());
       case 'mouth':
         cbModel.changeMouthTo(parms[0]);
       case 'mouth2':
         cbModel.changeMouthPhonemeStrength(parms[0], parms[1]);
+        
     }
   }
 

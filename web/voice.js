@@ -50,7 +50,7 @@ export default class VoiceHelper {
                 // Handle viseme data
                 const visemeJson = JSON.parse(event.data);
                 this.visemeData.push(...visemeJson);
-                if (!this.animationLoopRunning && this.visemeData.length > 2) {
+                if (!this.animationLoopRunning) {
                     this.playNextAudioBuffer(this.startVisemeSequence);
                     // Start the loop to display visemes
                     //setTimeout(() => playNextAudioBuffer(), 50);
@@ -60,8 +60,11 @@ export default class VoiceHelper {
                 if (!this.audioContext) {
                     this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 }
+                console.log('decoding audio buffer...');
                 const audioChunk = await this.audioContext.decodeAudioData(event.data);
+                console.log('audiobuffer decoded.');
                 this.audioBuffer.push(audioChunk);
+                console.log('audiobufer.push success. audioBuffer.length=' + this.audioBuffer.length);
             }
         });
 
@@ -87,7 +90,9 @@ export default class VoiceHelper {
     }
 
     playNextAudioBuffer(onstart=undefined) {
+        console.log('in playNextAudioBuffer');
         if (this.audioBuffer && this.audioBuffer.length > 0) {
+            console.log('playing next audio buffer');
             console.log('audioBuffer.length = ' + this.audioBuffer.length);
             const bufferToPlay = this.audioBuffer.shift();
             const source = this.audioContext.createBufferSource();
@@ -96,7 +101,20 @@ export default class VoiceHelper {
             source.start(0);
             if(onstart)
                 onstart(this);//setTimeout(()=>onstart(), 500);
-            source.onended = this.playNextAudioBuffer;
+            source.onended = ()=>{
+                setTimeout(() => {
+                    this.playNextAudioBuffer.bind(this)(onstart);
+                }, 200);                
+            };
+        }else if(this.animationLoopRunning){
+            console.log('setting timeout.');
+            setTimeout(() => {
+                if(this.visemeData.length > 0){
+                    this.playNextAudioBuffer.bind(this)(onstart);
+                }
+            }, 10);
+        }else{
+            console.log('no longer playing audio bufffer');
         }
     }
 

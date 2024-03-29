@@ -27,9 +27,9 @@ export default class ChatbotScene {
     this.camera.rotation.x=-5.57100671704551984;
     this.camera.rotation.y=-0.34286062223086816;
     this.camera.rotation.z=-0.05799141246354357;
-    this.camera.position.x=0.025314432535763928;
-    this.camera.position.y=0.3;
-    this.camera.position.z=0.5;
+    this.camera.position.x=-0.3199413950597789;
+    this.camera.position.y=0.39321509045434044;
+    this.camera.position.z=12.1874780998291223;
 
   }
 

@@ -33,14 +33,18 @@ dance.fbx
             You are chatting with {$user.name}, a {$user.age} yo {$user.gender}.
             It is {$date}.{$user.name} is in {$user.location}. 
             ---
-            The history of this chat thus far is :
+            The history of this chat thus far is as follows:
+            __Chat Summary__
+            {$chat.summary}
+
+            __Recent Chat Transcript__
             {$history}
             ---
             You see through the camera :
             nothing. camera is off.
             ---
-            {$user.name} has just said the following, delimited by [[]] : 
-            [[{$chat.userprompt}]].
+            {$user.name} has just said the following, encoded in JSON : 
+            {"message":"{$chat.userprompt}"}.
             ---
             Program instructions:
             {$program.instructions}

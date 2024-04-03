@@ -106,6 +106,13 @@
         cbModel.changeMouthTo(parms[0]);
       case 'mouth2':
         cbModel.changeMouthPhonemeStrength(parms[0], parms[1]);
+      case 'resetsound':
+        cbModel.resetSound();
+      case 'restart':
+        cbModel.restart((data)=> {
+          const chatLog = document.getElementById('chat-log');
+          chatLog.innerHTML = ''
+        });
         
     }
   }

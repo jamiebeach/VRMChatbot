@@ -63,7 +63,7 @@ class Prompt:
         print('\n\n>>> USER RESPONSE PROMPT <<<\n' + self.resolve_prompt("user", None, None, 'this is the chat history', 'this is the user prompt', "response"))
         print('\n\n>>> USER WAITING PROMPT <<<\n' + self.resolve_prompt("user", None, None, 'this is the chat history', 'this is the user prompt', "waiting"))
 
-    def resolve_prompt(self, prompt_type, user_info, character_info, chat_history, user_prompt, botstate="response"):
+    def resolve_prompt(self, prompt_type, user_info, character_info, chat_history, chat_summary, user_prompt, botstate="response"):
         if prompt_type == "system":
             prompt = self.system_prompt
         elif prompt_type == "user":
@@ -76,14 +76,21 @@ class Prompt:
         else:
             prompt = prompt.replace("{$program.instructions}", self.response_instruction)
 
-        returnPrompt = PromptResolver.resolve(user_info=user_info, character_info=character_info, prompt=prompt, userprompt=user_prompt, chat_history=chat_history, animationFiles=self.animations, botstate=botstate)
+        returnPrompt = PromptResolver.resolve(user_info=user_info, 
+                                              character_info=character_info, 
+                                              prompt=prompt, 
+                                              userprompt=user_prompt, 
+                                              chat_history=chat_history, 
+                                              chatsummary=chat_summary,
+                                              animationFiles=self.animations, 
+                                              botstate=botstate)
 
         return returnPrompt
 
 
 class PromptResolver:
     @classmethod
-    def resolve(cls, user_info=None, character_info=None, prompt="", userprompt="", chat_history="", animationFiles=[], botstate="response"):
+    def resolve(cls, user_info=None, character_info=None, prompt="", userprompt="", chat_history="", chatsummary="", animationFiles=[], botstate="response"):
                 # Current date
         current_date = datetime.now().strftime("%Y-%m-%d")
 
@@ -110,7 +117,7 @@ class PromptResolver:
         prompt = prompt.replace("{$user.location}", user_info.get('location', ''))
         prompt = prompt.replace("{$history}", chat_history)
         prompt = prompt.replace("{$chat.userprompt}", userprompt)
-
+        prompt = prompt.replace("{$chat.summary}", chatsummary)
         animationFilesStr = ''
         if(len(animationFiles)>0):
             animationFilesStr = str(animationFiles)

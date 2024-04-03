@@ -77,6 +77,10 @@ export default class VoiceHelper {
         */
     }
 
+    resetAudioContext(){
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
     sendText(text, callback) {
         //const text = document.getElementById('textInput').value;
         /*
@@ -95,6 +99,8 @@ export default class VoiceHelper {
         if (this.audioBuffer && this.audioBuffer.length > 0) {
             console.log('playing next audio buffer');
             console.log('audioBuffer.length = ' + this.audioBuffer.length);
+            console.log('audioContext.state : ' + this.audioContext.state);
+
             const bufferToPlay = this.audioBuffer.shift();
             const source = this.audioContext.createBufferSource();
             source.buffer = bufferToPlay;

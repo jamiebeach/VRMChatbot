@@ -1,18 +1,19 @@
 export const animationUrls = [
     'happyIdle.2fbx.fbx',
     'happyIdle.fbx',
-    'Idle.fbx',
     'Idle2.fbx',
     'Idle3.fbx',
     'Idle4.fbx',    
     'angry.fbx',
+    'talking1.fbx',
+    'talking2.fbx',
+    /*
     'arguinig.fbx',
     'arguinig2.fbx',
-    'talking2.fbx',
     'talking3.fbx',
     'talking5.fbx',
+    'Idle.fbx',    
     'dance.fbx',    
-    /*
     'talking1.fbx',
     'talking4.fbx',
     'dance2.fbx',
@@ -22,8 +23,6 @@ export const animationUrls = [
   ];
 
   export const  idleAnimationsUrls = [
-    'Idle.fbx',
-    'Idle2.fbx',
     'Idle3.fbx',
     'Idle4.fbx'
   ];
@@ -31,7 +30,9 @@ export const animationUrls = [
   export const  talkingAnimationUrls = [
     'talking2.fbx',
     'talking3.fbx',
-    'talking5.fbx'
+    'talking5.fbx',
+    'Idle2.fbx',
+    'Idle3.fbx'    
   ];
 
   export const  angryAnimationUrls = [

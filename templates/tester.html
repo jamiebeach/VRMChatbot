@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chatbot Test Harness</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+  <script type="module" src="https://unpkg.com/json-formatter-js@2.3.4/dist/json-formatter.umd.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/tachyons/css/tachyons.min.css">
+  <style>
+    #message-input {
+      width:600px;
+    }
+    #chatoutput {
+      width:600px;
+      border:1px solid black;
+      height:300px;
+      overflow-y:scroll;
+    }
+  </style>
+</head>
+<body style="margin:20px;">
+  <h1 class="f2 bold">Chatbot Test Harness</h1>
+  <p class="lh-copy">This is a test page for the chatbot.</p>
+  <div id="chatoutput"></div>
+  <label for="message-input" class="db mb2">Message:</label>
+  <input type="text" id="message-input" name="message-input" class="input-reset ba b--black-20 pa2 mb2">
+  <button id="submit-button" class="btn btn-primary">Send</button>
+  <button id="loadcharacter-button" class="btn btn-primary">Load Character</button>
+
+  <div id="message-container"></div>
+
+  <script type="module">
+    const wsProtocol = window.location.protocol === 'https:' ? 'https' : 'http';
+    const socketUrl = `${wsProtocol}://${window.location.host}`;
+    const socket = io.connect(socketUrl, { transports: ['websocket'] });
+
+    socket.on('connect', () => {
+      console.log('Connected to WebSocket server');
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from WebSocket server');
+    });
+
+    socket.on('message', (message) => {
+      console.log(message);
+      const formatter = new JSONFormatter(message);
+      let mc = document.querySelector('#message-container');
+
+      // Create a document fragment to hold the new structure temporarily
+      let fragment = document.createDocumentFragment();
+
+      // Append the newly created element to the fragment
+      fragment.appendChild(formatter.render());
+
+      // Iterate through existing child nodes and append them to the fragment
+      while (mc.firstChild) {
+          fragment.appendChild(mc.firstChild);
+      }
+
+      // Clear the container and append the fragment containing all elements in the correct order
+      mc.innerHTML = '';
+      mc.appendChild(fragment);
+      //mc.innerHTML = (formatter.render()) + mc.innerHTML;
+
+      let t = (message.type == 'text')?'text':'other';
+      if(t == 'text'){
+        let moodEmoji = '😐';
+        if(message.data.mood == 'happy')
+          moodEmoji = '🙂';
+        else if(message.data.mood == 'sad')
+          moodEmoji = '🙁';
+        else if(message.data.mood == 'angry')
+          moodEmoji = '😠';
+        document.getElementById('chatoutput').innerHTML += '<p><b>Bot:</b>' + moodEmoji + ' - ' + message.data.response + '</p>';
+        document.getElementById('chatoutput').scrollTop = document.getElementById('chatoutput').scrollHeight;
+
+      }
+    });
+
+    function handleMessageSubmit(){
+      const message = document.querySelector('#message-input').value;
+      
+      let t = (message[0] == '/')?'command':'text';
+      let m = (message[0] == '/')?message.substring(1):message;
+
+      var jsonMessage = {
+        "type":t,
+        "data":m
+      };
+      if(t == 'text'){
+        document.getElementById('chatoutput').innerHTML += '<p><b>User:</b>' + m + '</p>';
+        document.getElementById('chatoutput').scrollTop = document.getElementById('chatoutput').scrollHeight;
+      }
+      console.log(jsonMessage);
+      socket.emit('message', JSON.stringify(jsonMessage));
+      document.querySelector('#message-input').value = '';      
+    }
+
+    document.getElementById('message-input').addEventListener('keypress', function(event) {
+    // Check if the pressed key is Enter (key code 13)
+    if (event.key === 'Enter') {
+        handleMessageSubmit();
+        event.preventDefault(); // Prevent the default action to avoid form submission or other unwanted behavior
+    }
+    });
+    document.querySelector('#submit-button').addEventListener('click', () => {
+      handleMessageSubmit()
+    });
+
+    document.querySelector('#loadcharacter-button').addEventListener('click', () => {
+      socket.emit('load_character', { characterName: 'arianew2' });
+      document.querySelector('#message-input').value = '';
+    });
+  </script>
+</body>
+</html>

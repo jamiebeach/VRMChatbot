@@ -259,6 +259,25 @@ export default class ChatbotModel {
         this.expressionManager.changeMouthPhonemeStrength(ph, st);
     }
 
+    restart(onComplete){
+        print('RESTARTING CHAT')
+        fetch('/api/restart', {
+            method: 'GET',
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('data: ' + data);
+            console.log('Response:' + data.response);
+            if(onComplete){
+                onComplete(data);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            // Handle the error
+        });        
+    }
+
     say(sentence, onResponse){
         fetch('/api/prompt', {
             method: 'POST',
@@ -305,5 +324,9 @@ export default class ChatbotModel {
             // Handle the error
         });
 
+    }
+
+    resetSound(){
+        this.voiceHelper.resetAudioContext();
     }
 }

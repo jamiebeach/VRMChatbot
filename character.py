@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 from datetime import datetime
 import re
+import voicecontroller
 
 
 class Character:
@@ -44,6 +45,7 @@ class Character:
 
     def getinfo(self):
         return {"name":self.name, "gender":self.gender}
+
     
 class Prompt:
     def __init__(self, system_prompt, user_prompt, response_instruction, waiting_instruction, animations):

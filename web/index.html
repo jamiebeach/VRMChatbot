@@ -8,14 +8,17 @@
 </head>
 <body>
 
+<div id="imageContainer" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; background: no-repeat center center; background-size:contain;">
+  <div id="dataContainer" style="position:relative;margin:0 auto;color:white;background-color:black;"></div>
+</div>
 <div id="scene-container"></div>
 <div id="chat-container">
   <div id="input-container">
     <input type="text" id="chat-input" autocomplete="off" autofocus placeholder="Type your message...">
   </div>
   <div id="chat-log"></div>
-
 </div>
+<div id="debug-log"></div>
 
 
 <script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
@@ -30,63 +33,157 @@
   }
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.3/socket.io.js"></script>
+<script type="module" src="https://unpkg.com/json-formatter-js@2.3.4/dist/json-formatter.umd.js"></script>
 
 <script type="module">
   import * as THREE from 'three';
   import ChatbotScene from './Chatbot/chatbotScene.js';
   import ChatbotModel from './Chatbot/chatbotModel.js';
   import { STATES } from './Chatbot/chatbotModel.js';
-  
+  import SocketHandler from './Sockets/sockets.js';
+
   const cbScene = new ChatbotScene(document.getElementById('scene-container'));
   const scene = cbScene.getScene();
   const renderer = cbScene.getRenderer();
   let timet = 0;
   let currentAnimationIndex=0;
+  let cbModel = undefined;
+  const msgHistory = [];
+  let msgHistoryOffset = 0;
+  let sockethandler = undefined;
+  let curModelURI = '';
+  let curCharacterCard = '';
+  
+function newChatbot(modeluri, character_name){
+  curModelURI = modeluri;
+  curCharacterCard = character_name;
 
-  let cbModel = new ChatbotModel('VRM/aria2.vrm', cbScene.getScene(), () => {
-    animate(cbModel);
-  });
+  sockethandler = new SocketHandler(
+    ()=>{
+      console.log('connected from sockethandler');
+      console.log(sockethandler.getSocket());
+      cbModel = new ChatbotModel(modeluri, cbScene.getScene(), () => {
+        animate(cbModel, cbScene);
+      }, sockethandler.getSocket());
+      sockethandler.send('load_character', { characterName: character_name });
+    },
 
-
-    // Chat input event listener
-  const chatInput = document.getElementById('chat-input');
-  chatInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      const message = chatInput.value.trim();
-      if (message) {
-        handleChatMessage(message);
-        chatInput.value = '';
+    ()=>{
+      console.log('disconnected from sockethandler');
+      if(cbModel){
+        cbModel.end();
       }
+    },
+
+    (message)=>{
+      console.log('message from sockethandler');
+      handleMessage(message);
     }
+  );
+}
+newChatbot('VRM/freddy.vrm', 'narrator-adventure');
+
+function handleMessage(message){
+  console.log(message);
+  const formatter = new JSONFormatter(message);
+  let mc = document.querySelector('#debug-log');
+
+  // Create a document fragment to hold the new structure temporarily
+  let fragment = document.createDocumentFragment();
+
+  // Append the newly created element to the fragment
+  fragment.appendChild(formatter.render());
+
+  // Iterate through existing child nodes and append them to the fragment
+  while (mc.firstChild) {
+      fragment.appendChild(mc.firstChild);
+  }
+
+  // Clear the container and append the fragment containing all elements in the correct order
+  mc.innerHTML = '';
+  
+  let t = (message.type == 'text')?'text':message.type;
+  if(t == 'text'){
+      mc.appendChild(fragment);
+      let moodEmoji = '😐';
+      if(message.data.mood == 'happy')
+          moodEmoji = '🙂';
+      else if(message.data.mood == 'sad')
+          moodEmoji = '🙁';
+      else if(message.data.mood == 'angry')
+          moodEmoji = '😠';
+
+      let botp = document.createElement('p');
+      botp.innerHTML = '<b>Aria:</b>' + moodEmoji + ' - ' + message.data.response;
+      addNodeAtBeginningOfDiv('chat-log', botp);
+      document.getElementById('chat-log').scrollTop = 0;
+
+      cbModel.say2(message.data.response, message.data.mood, ()=>{
+          console.log('called say2()');
+      }, (viseme)=>{
+          sockethandler.interrupt();
+      });
+  }else if(t == 'image'){
+    console.log('received a new image');
+    //console.log(message.data);
+    cbScene.updatePlaneTexture(message.data);
+  }else if(t == 'data'){
+    document.getElementById("dataContainer").innerText = message.data;
+  }
+}
+
+function addNodeAtBeginningOfDiv(divid, node){
+    let mc = document.querySelector('#' + divid);
+
+    // Create a document fragment to hold the new structure temporarily
+    let fragment = document.createDocumentFragment();
+
+    // Append the newly created element to the fragment
+    fragment.appendChild(node);
+
+    // Iterate through existing child nodes and append them to the fragment
+    while (mc.firstChild) {
+        fragment.appendChild(mc.firstChild);
+    }
+
+    // Clear the container and append the fragment containing all elements in the correct order
+    mc.innerHTML = '';
+    mc.appendChild(fragment);
+}
+
+  // Chat input event listener
+  const chatInput = document.getElementById('chat-input');
+  const debuglog = document.querySelector('#debug-log');
+  
+  document.addEventListener('keydown', (event) => {
+    if(event.key == 'Escape'){
+      //Then hide or show the text box
+      debuglog.style.visibility = chatInput.style.visibility = (chatInput.style.visibility == 'visible')?'hidden':'visible';
+    }  
   });
 
-  function handleChatMessage(message) {
-    console.log('Chat message:', message);
-    if (message.startsWith('/')) {
-      // Process commands
-      const [command, ...params] = message.slice(1).trim().split(' ');
-      processCommand(command.toLowerCase(), params);
-    } else {
-      // Handle regular chat message
-      const chatLog = document.getElementById('chat-log');
-      const userMessage = document.createElement('p');
-      userMessage.textContent = `User: ${message}`;
-      //chatLog.appendChild(userMessage);
-      chatLog.innerHTML = userMessage.outerHTML + chatLog.innerHTML;
+  chatInput.addEventListener('keydown', (event) => {
+    sockethandler.interrupt();
+    if(event.key == 'Escape'){
+      //Then hide or show the text box
+      chatInput.style.visibility = (chatInput.style.visibility == 'visible')?'hidden':'visible';
+    }else if (event.key === 'Enter') {
 
-      console.log('Chat message:', message);
-      cbModel.say(message, (resp)=>{
-        // Append the AI's response to the chat log
-        const aiResponse = document.createElement('p');
-        aiResponse.textContent = `AI: ${resp}`;
+        const message = chatInput.value.trim();
 
-        chatLog.innerHTML = aiResponse.outerHTML + chatLog.innerHTML;
-        console.log('resp = ' + resp);
-      });
-
-      // Add your logic to process the regular chat message and interact with the 3D avatar
+        if (message.startsWith('/')) {
+            // Process commands
+            const [command, ...params] = message.slice(1).trim().split(' ');
+            processCommand(command.toLowerCase(), params);
+        } else {
+            sockethandler.messageSubmit(message);
+            let userp = document.createElement('p');
+            userp.innerHTML = '<p><b>Jamie:</b>' + message + '</p>';
+            addNodeAtBeginningOfDiv('chat-log', userp);
+            document.querySelector('#chat-input').value = '';      
+        }
     }
-  }
+  });
 
   function processCommand(command, parms){
     switch(command){
@@ -94,33 +191,79 @@
         if(parms[0] == 'happy'){
           cbModel.changeState(STATES.happy);
         }
+        break;
       case 'say':
         var sentence = parms.join(' ');
-        cbModel.say(sentence);
+        cbModel.testvoice(sentence, ()=>{
+            consol.log('done with sentence');
+        });
+        break;
       case 'animation':
         var animationFile = parms[0];
         cbModel.loadFBX(animationFile);
+        break;
       case 'showcamera':
         console.log(cbScene.getCamera());
+        break;
+      case 'setcamera':
+        let cx = parseFloat(parms[0]);
+        let cy = parseFloat(parms[1]);
+        let cz = parseFloat(parms[2]);
+        cbScene.setCameraPos(cx,cy,cz);
       case 'mouth':
         cbModel.changeMouthTo(parms[0]);
+        break;
       case 'mouth2':
         cbModel.changeMouthPhonemeStrength(parms[0], parms[1]);
+        break;
       case 'resetsound':
         cbModel.resetSound();
+        break;
+      case 'setpos':
+        let x = parseInt(parms[0]);
+        let y = parseInt(parms[1]);
+        let z = parseInt(parms[2]);
+        cbModel.setScenepos(x,y,z);
+        break;
+      case 'getpos':
+        console.log(cbModel.getScenepos());
+        break;
+      case 'image':
+        sockethandler.send('message', 
+          JSON.stringify(
+            {
+              "type":"command",
+              "data":"image"
+            }
+          )
+        );
+        break;
+      case 'textureplane':
+        let v = {x:parseInt(parms[0]),
+                y:parseInt(parms[1]),
+                z:parseInt(parms[2]),
+                scale:parseFloat(parms[3]),
+                opacity:parseFloat(parms[4])}
+        cbScene.setPlaneTexture(v.x,v.y,v.z,v.scale,v.opacity);
+        break;
+      case 'changemodel':
+        cbModel.end();
+        newChatbot(parms[0], 'aria-adventure') 
+        break;     
       case 'restart':
         cbModel.restart((data)=> {
           const chatLog = document.getElementById('chat-log');
           chatLog.innerHTML = ''
-        });
-        
+        });        
     }
   }
 
-  function animate(model) {
-    requestAnimationFrame(() => animate(model));
+  function animate(model, chatbotscene) {
+    requestAnimationFrame(() => animate(model, chatbotscene));
     model.animate();
+    chatbotscene.animate();
     cbScene.getControls().update();
     renderer.render(scene, cbScene.getCamera());
   }
+
 </script>

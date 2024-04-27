@@ -48,14 +48,14 @@ body, html {
 #chat-log {
   position: relative;
   width: 70%;
-  max-height: 80px;
+  max-height: 120px;
   margin: 0 auto;
   margin-bottom: 20px;
   padding: 10px;
   background: rgba(0, 0, 0, 0.5);
   border-radius: 10px;
-  overflow-y:hidden;
-  height:80px;
+  overflow-y:scroll;
+  height:120px;
   -webkit-mask-image: linear-gradient(0deg, transparent 16px, red 66px);
   mask-image: linear-gradient(0deg, transparent 16px, red 66px);
 }
@@ -65,4 +65,25 @@ body, html {
   font-size: 16px;
   color: white;
   text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+#debug-log {
+  position:absolute;
+  left:10px;
+  top:10px;
+  width:800px;
+  height:300px;
+  color:white;
+  font-size:10pt;
+  overflow-y: scroll;
+  overflow-x: scroll;
+  z-index:1000;
+}
+::-webkit-scrollbar {
+  width: 0;  /* Remove scrollbar space */
+  background: transparent;  /* Optional: just make scrollbar invisible */
+}
+/* Optional: show position indicator in red */
+::-webkit-scrollbar-thumb {
+  background: #FF0000;
 }

@@ -10,20 +10,28 @@ def start_proxy(ws_url, sid, socketio):
     Each client connection will have its own dedicated WebSocket connection to the target.
     """
     print('creating websocket for ' + ws_url)
-    ws = create_connection(ws_url)
+    ws = None
+    try:
+        ws = create_connection(ws_url)
+    except:
+        print("ERROR: UNABLE TO CREATE VOICE WEB SOCKET")
 
     def send_to_client():
         """Receives messages from the target WebSocket server and forwards them to the client."""
+        if(ws == None):
+            print("ERROR: ws is None")
+            return
+        
         try:
             while True:
                 message = ws.recv()
                 print('voicewebsocket: send_to_client, message recv : ');
 
                 if(len(message) < 10000):
-                    print(message)
+                    print(message[:50])
                 
                 print('sending the message')
-                socketio.emit('message', {'data': message}, to=sid)
+                socketio.emit('voice_message', {'data': message}, to=sid)
                 print('message sent')
         except Exception as e:
             print(f"Error receiving message from target WebSocket: {e}")
@@ -32,6 +40,10 @@ def start_proxy(ws_url, sid, socketio):
 
     def send_to_server(message):
         """Sends a client's message to the target WebSocket server."""
+        if(ws == None):
+            print("ERROR: ws is None")
+            return
+        
         print('send to server')
         try:
             print('sending message')

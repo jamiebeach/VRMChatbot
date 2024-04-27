@@ -5,5 +5,8 @@
     "OPENAIAPI_CHAT_BASEURL":"http://localhost:5001/v1/",
     "OPENAIAPI_CHAT_KEY":"notneeded",
     "OPENAI_CHAT_MODEL":"SolarMaid.gguf",
-    "TTS_SERVER_URL":"wss://<tts server domain>/audio_stream"
+    "TTS_SERVER_URL":"wss://<tts server domain>/audio_stream",
+    "THINK_FREQUENCY_SECONDS":2,
+    "DEFAULT_CHARACTER":"./characters/aria.xml",
+    "CHARACTER_PATH":"./characters"
 }

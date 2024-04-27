@@ -27,7 +27,7 @@
   <button id="submit-button" class="btn btn-primary">Send</button>
   <button id="loadcharacter-button" class="btn btn-primary">Load Character</button>
 
-  <div id="message-container"></div>
+  <div id="message-container" style="width:95%;border:1px solid #aaa;height:100px; overflow-y:scroll;"></div>
 
   <script type="module">
     const wsProtocol = window.location.protocol === 'https:' ? 'https' : 'http';
@@ -98,18 +98,22 @@
     }
 
     document.getElementById('message-input').addEventListener('keypress', function(event) {
-    // Check if the pressed key is Enter (key code 13)
-    if (event.key === 'Enter') {
-        handleMessageSubmit();
-        event.preventDefault(); // Prevent the default action to avoid form submission or other unwanted behavior
-    }
+      // Check if the pressed key is Enter (key code 13)
+      if (event.key === 'Enter') {
+          handleMessageSubmit();
+          event.preventDefault(); // Prevent the default action to avoid form submission or other unwanted behavior
+      }else {
+        //make sure that the bot isn't also trying to say something at this same time.
+        socket.emit('interrupt');
+      }
+
     });
     document.querySelector('#submit-button').addEventListener('click', () => {
       handleMessageSubmit()
     });
 
     document.querySelector('#loadcharacter-button').addEventListener('click', () => {
-      socket.emit('load_character', { characterName: 'arianew2' });
+      socket.emit('load_character', { characterName: 'aria3' });
       document.querySelector('#message-input').value = '';
     });
   </script>

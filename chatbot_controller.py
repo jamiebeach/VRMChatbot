@@ -1,31 +1,38 @@
 from flask import request
 from shared_resources import client_sessions
-import voicewebsocket2
 from chatbot.chatbot import Chatbot
 import xml.etree.ElementTree as ET
 import json
+import voicecontroller
+
+voice_controller = None
 
 def init_app(socketio, config):
+    voice_controller = voicecontroller.VoiceController(socketio, config)
+
     @socketio.on('connect')
     def handle_connect():
         print('Client connected:', request.sid)
         
-        # Initialize WebSocket proxy for voice and other functionalities
-        target_ws_url = config['TTS_SERVER_URL']
-        #send_to_TTS_server = voicewebsocket2.start_proxy(target_ws_url, request.sid, socketio)
-        
-        print('here')
-        # Create and store the send_to_server function for voice proxying
-        client_sessions[request.sid] = {"send_to_TTS_server": ""}
-        
         # Initialize and store the chatbot instance for this session
-        client_chatbot = Chatbot(lambda message,sid: handle_response(message, sid), request.sid, socketio, config)
+        client_chatbot = Chatbot(lambda message,sid: handle_response(message, sid), 
+                                 lambda message,sid: handle_imageresponse(message, sid),
+                                 lambda message,sid: handle_data_response(message, sid),
+                                 request.sid, socketio, config)
+        
+        if(not request.sid in client_sessions):
+            client_sessions[request.sid] = {}
         client_sessions[request.sid]["chatbot"] = client_chatbot
+
+        print('adding voice controller client ' + request.sid)
+        voice_controller.addClient(request.sid)
 
     @socketio.on('disconnect')
     def handle_disconnect():
         print('Client disconnected:', request.sid)
         if request.sid in client_sessions:
+            print('attempting to clean up client ' + request.sid)
+            client_sessions[request.sid]["chatbot"].kill()
             del client_sessions[request.sid]
 
     @socketio.on('message')
@@ -61,11 +68,18 @@ def init_app(socketio, config):
         send_response_to_client(request.sid, 'info', character_details)
 
         socketio.start_background_task(client_chatbot.startThinkingThread)
+        socketio.start_background_task(client_chatbot.startImageGenThread)
 
         # You might need to modify the Chatbot class to accept and use these details
 
     def handle_response(message, session_id):
         send_response_to_client(session_id, 'text', message)
+
+    def handle_imageresponse(imagedata, session_id):
+        send_response_to_client(session_id, 'image', imagedata)
+
+    def handle_data_response(data, session_id):
+        send_response_to_client(session_id, 'data', data)
 
     def send_response_to_client(session_id, response_type, response_data):
         """
@@ -91,3 +105,10 @@ def init_app(socketio, config):
         character_details = {child.tag: child.text for child in root}
         return character_details
 
+    @socketio.on('interrupt')
+    def handle_interrupt():
+        #Here, tell the chatbot to stop talking if it's trying to.
+        session_id = request.sid
+        if session_id in client_sessions and "chatbot" in client_sessions[session_id]:
+            client_chatbot = client_sessions[session_id]["chatbot"]
+            client_chatbot.interrupt()

@@ -5,4 +5,11 @@ venv
 __pycache__
 *.pyc
 __pycache__/app.cpython-310.pyc
-aria2.xml
+aria*.xml
+*.blend
+untitled.*
+*secret*
+*.glb
+oldman
+test.json
+

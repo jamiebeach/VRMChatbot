@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { VRMLoaderPlugin } from '@pixiv/three-vrm';
 import { animationUrls, happyAnimationUrls, idleAnimationsUrls, talkingAnimationUrls } from './animationData.js';
 import { loadMixamoAnimation } from './loadMixamoAnimation.js';
@@ -21,7 +22,7 @@ export const STATES={
 const ANIMATIONBASEURL = './Animations/';
 
 export default class ChatbotModel {
-    constructor(modelUrl, scene, onLoaded) {
+    constructor(modelUrl, scene, onLoaded, socket) {
         this.scene = scene;
         this.animationCache = new Map();
         this.currentMixer = undefined;
@@ -46,13 +47,22 @@ export default class ChatbotModel {
         this.talk = new ChatbotTalk(this);
         this.preloaded = false;
 
-        this.voiceHelper = new VoiceHelper();
+        this.voiceHelper = new VoiceHelper(socket);
 
-        const loader = new GLTFLoader();
+        /*
+        this.loadModel(modelUrl, ()=>{
+            this.preloadAnimations().then(() => {
+                this.preloaded = true;
+                onLoaded();
+            });
+        });
+        */
+        
+        const loader = new GLTFLoader();        
         // Install GLTFLoader plugin
         loader.register((parser) => {
             return new VRMLoaderPlugin(parser, {autoUpdateHumanBones: true});
-        });
+        });    
 
         loader.load(
             // URL of the VRM you want to load
@@ -62,14 +72,14 @@ export default class ChatbotModel {
             (gltf) => {
               // retrieve a VRM instance from gltf
               const vrm = gltf.userData.vrm;
-              const vrmSceneObject = vrm.scene;
+              const vrmSceneObject = (vrm.scene)?vrm.scene:vrm;
         
               // Rotate the VRM scene object by 180 degrees around the Y-axis
               //vrmSceneObject.rotation.y = Math.PI; // Math.PI is 180 degrees in radians
               vrmSceneObject.position.y = -1.15
               // add the loaded vrm to the scene
               this.currentVrm = vrm;
-              scene.add(vrm.scene);
+              scene.add(vrmSceneObject);
         
                     // Disable frustum culling
                     vrm.scene.traverse( ( obj ) => {
@@ -109,7 +119,97 @@ export default class ChatbotModel {
     
             (error) => this.log(error),
         );
+        
     }
+
+    loadModel(modelUrl, onLoaded) {
+        const extension = modelUrl.split('.').pop().toLowerCase();
+
+        switch (extension) {
+            case 'vrm':
+                this.loadVRM(modelUrl, onLoaded);
+                this.expressionManager = new ExpressionManager(this);
+                break;
+            case 'fbx':
+                this.loadFBXModel(modelUrl, onLoaded);
+                this.expressionManager = new ExpressionManager(this);
+                break;
+            case 'gltf':
+            case 'glb':  // Adding support for .glb, which is the binary form of GLTF
+                this.loadGLTF(modelUrl, onLoaded);
+                this.expressionManager = new ExpressionManager(this);
+                break;
+            default:
+                console.error('Unsupported model format:', extension);
+        }
+    }
+
+    loadVRM(modelUrl, onLoaded) {
+        const loader = new GLTFLoader();
+        loader.register((parser) => new VRMLoaderPlugin(parser, { autoUpdateHumanBones: true }));
+
+        loader.load(modelUrl, (gltf) => {
+            const vrm = gltf.userData.vrm;
+            vrm.scene.position.y = -1.15;
+            this.scene.add(vrm.scene);
+            vrm.scene.traverse((obj) => obj.frustumCulled = false);
+            this.currentModel = this.currentVrm = vrm;
+            this.expressionManager = new ExpressionManager(this);
+            this.setupMixer(vrm.scene, gltf.animations);
+            onLoaded();
+        }, (error) => console.error(error));
+    }  
+
+    setupMixer(sceneObject, animations) {
+        this.mixer = new THREE.AnimationMixer(sceneObject);
+        if (animations.length > 0) {
+            const action = this.mixer.clipAction(animations[0]);
+            action.play();
+        }
+
+        // Ensure all models have a unified update interface
+        if(!sceneObject.update){
+            sceneObject.update = (delta) => {
+                if (this.mixer) {
+                    this.mixer.update(delta);
+                }
+            };        
+        }
+    }    
+
+    loadGLTF(modelUrl, onLoaded) {
+        // Setup DRACOLoader
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/'); // set the path to DRACO decoder files
+
+        const loader = new GLTFLoader();  
+        loader.setDRACOLoader(dracoLoader);
+        loader.register((parser) => new VRMLoaderPlugin(parser, { autoUpdateHumanBones: true }));
+
+        loader.load(modelUrl, (gltf) => {
+            const vrm = gltf.userData.vrm;
+            const sceneObject = gltf.scene;
+            sceneObject.position.y = -1.15;
+            this.scene.add(sceneObject);
+            sceneObject.traverse((obj) => obj.frustumCulled = false);
+            this.currentModel = this.currentVrm = gltf;
+            this.setupMixer(sceneObject, gltf.animations);
+            onLoaded();
+        }, (error) => console.error(error));
+    }
+
+    loadFBXModel(modelUrl, onLoaded) {
+        const loader = new FBXLoader();
+
+        loader.load(modelUrl, (fbx) => {
+            fbx.position.y = -1.15;
+            this.scene.add(fbx);
+            fbx.traverse((obj) => obj.frustumCulled = false);
+            this.currentModel = this.currentVrm = fbx;
+            this.setupMixer(fbx, fbx.animations);
+            onLoaded();
+        }, (error) => console.error(error));
+    }    
 
     log(error){
         //console.error(error)
@@ -121,6 +221,18 @@ export default class ChatbotModel {
 
     getAnimationCache() {
 
+    }
+
+    setScenepos(x,y,z){
+        this.currentVrm.scene.position.x = x;
+        this.currentVrm.scene.position.y = y;
+        this.currentVrm.scene.position.z = z;
+    }
+
+    getScenepos(){
+        return {"x":this.currentVrm.scene.position.x,
+                "y":this.currentVrm.scene.position.y, 
+                "z":this.currentVrm.scene.position.z};
     }
 
     preloadAnimations() {
@@ -144,7 +256,11 @@ export default class ChatbotModel {
         }
 
         if (this.currentVrm) {
-            this.currentVrm.update(deltaTime);
+            try {
+                this.currentVrm.update(deltaTime);
+            }catch(e){
+                console.log('error updating model : ' + e);
+            }
 
             if(this.state == STATES.idle){
                 this.idle(deltaTime);
@@ -169,8 +285,8 @@ export default class ChatbotModel {
 
     loadFBX(animationUrl, transitionDuration=0.2) {
         // Create AnimationMixer for VRM
-        const mixer = new THREE.AnimationMixer(this.currentVrm.scene);
-      
+        const mixer = new THREE.AnimationMixer((this.currentVrm.scene)?this.currentVrm.scene:this.currentVrm);
+
         // Get the preloaded animation clip
         const clip = this.animationCache.get(animationUrl);
       
@@ -259,6 +375,15 @@ export default class ChatbotModel {
         this.expressionManager.changeMouthPhonemeStrength(ph, st);
     }
 
+    end(){
+        if(this.voiceHelper)
+            this.voiceHelper.end();
+        this.scene.remove((this.currentVrm.scene)?this.currentVrm.scene:this.currentVrm);
+        this.currentMixer = undefined;
+        this.currentVrm = undefined;
+        delete(this);
+    }
+
     restart(onComplete){
         print('RESTARTING CHAT')
         fetch('/api/restart', {
@@ -276,6 +401,49 @@ export default class ChatbotModel {
             console.error('Error:', error);
             // Handle the error
         });        
+    }
+
+    testvoice(sentence, onResponse){
+        this.voiceHelper.sendText(sentence, (viseme)=>{
+            console.log(viseme);
+            if(this.state != STATES.talking){
+                console.log('STARTING to TALK. CHANGING STATE');
+                this.changeState(STATES.talking);
+            }
+            this.changeMouthTo(viseme);
+        });
+    }
+
+    say2(sentence, mood, onResponse, onViseme){
+        console.log('mood changed to ' + mood);
+        if(this.talk){
+            this.talk.process(sentence);
+            if(mood == 'happy'){
+                this.changeState(STATES.happy);
+            }else if(mood == 'sad' ){
+                this.changeState(STATES.sad);
+            }else if(mood == 'angry'){
+                this.changeState(STATES.angry);
+            }else {
+                this.state = STATES.pretalking;
+            }                
+        }
+
+        //Speak the response
+        this.voiceHelper.sendText(sentence, (viseme)=>{
+            console.log(viseme);
+            if(onViseme){
+                onViseme(viseme);
+            }
+            if(this.state != STATES.talking){
+                console.log('STARTING to TALK. CHANGING STATE');
+                this.changeState(STATES.talking);                
+            }
+            this.changeMouthTo(viseme);
+        });
+
+        if(onResponse)
+            onResponse(sentence);
     }
 
     say(sentence, onResponse){
